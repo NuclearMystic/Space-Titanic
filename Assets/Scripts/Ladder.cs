@@ -2,34 +2,47 @@ using UnityEngine;
 
 public class Ladder : MonoBehaviour
 {
-    private bool playerInRange = false;
+    [SerializeField] private Transform ladderSnapPoint;  // Player aligns with this, but only Y should change
+    [SerializeField] private Transform ladderBottom;     // Lowest point of the ladder
+    [SerializeField] private Transform ladderTop;        // Highest point of the ladder
+    [SerializeField] private Transform topExitPoint;     // Where the player lands after climbing up
+
     private PlayerController player;
+    private bool playerInRange = false;
+
+    private float fixedX, fixedZ; // Store original X and Z positions
+
+    void Start()
+    {
+        // Save the original position of the snap point
+        fixedX = ladderSnapPoint.position.x;
+        fixedZ = ladderSnapPoint.position.z;
+    }
+
+    void Update()
+    {
+        if (playerInRange && player != null)
+        {
+            // Keep the snap point at the player's Y within the ladder range, but keep X and Z unchanged
+            float clampedY = Mathf.Clamp(player.transform.position.y, ladderBottom.position.y, ladderTop.position.y);
+            ladderSnapPoint.position = new Vector3(fixedX, clampedY, fixedZ);
+
+            // Handle interaction input in Update() to ensure it always registers
+            if (Input.GetButtonDown("Interact"))
+            {
+                player.StartClimbing(this, ladderSnapPoint.position);
+                UIController.Instance.HideInteractionPrompt();
+            }
+        }
+    }
 
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            playerInRange = true;
             player = other.GetComponent<PlayerController>();
-
-            if (player != null)
-            {
-                UIController.Instance.ShowInteractionPrompt(player.transform);
-            }
-        }
-    }
-
-    void OnTriggerStay(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
             playerInRange = true;
-            player = other.GetComponent<PlayerController>();
-
-            if (player != null)
-            {
-                UIController.Instance.ShowInteractionPrompt(player.transform);
-            }
+            UIController.Instance.ShowInteractionPrompt(player.transform);
         }
     }
 
@@ -38,20 +51,16 @@ public class Ladder : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             playerInRange = false;
-            if (player != null)
-            {
-                UIController.Instance.HideInteractionPrompt();
-                player = null;
-            }
+            UIController.Instance.HideInteractionPrompt();
+            player = null;
         }
     }
 
-    void Update()
+    public void CheckIfAtTop(PlayerController player)
     {
-        if (playerInRange && player != null && Input.GetButtonDown("Interact"))
+        if (player.transform.position.y >= ladderTop.position.y - 0.1f)
         {
-            player.StartClimbing(transform);
-            UIController.Instance.HideInteractionPrompt();
+            player.ExitLadderAtTop(topExitPoint.position);
         }
     }
 }

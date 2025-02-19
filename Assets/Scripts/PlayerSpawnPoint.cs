@@ -8,7 +8,6 @@ public class PlayerSpawnPoint : MonoBehaviour
         if (player != null)
         {
             player.transform.position = transform.position;
-            player.transform.rotation = transform.rotation;
         }
         else
         {

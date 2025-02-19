@@ -16,7 +16,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Ladder Settings")]
     public bool isClimbing = false;
-    private Transform ladderTransform;
+    private Ladder currentLadder;
 
     [Header("Ground Check Settings")]
     public float groundCheckDistance = 0.2f;
@@ -41,7 +41,6 @@ public class PlayerController : MonoBehaviour
         if (isClimbing)
         {
             HandleLadderMovement();
-
         }
         else
         {
@@ -58,6 +57,11 @@ public class PlayerController : MonoBehaviour
         if (isClimbing)
         {
             rb.velocity = new Vector3(0, verticalInput * climbSpeed, 0);
+
+            if (currentLadder != null)
+            {
+                currentLadder.CheckIfAtTop(this);
+            }
         }
         else
         {
@@ -100,24 +104,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     void HandleLadderMovement()
     {
         verticalInput = Input.GetAxis("Vertical");
         horizontalInput = Input.GetAxis("Horizontal");
 
-
-        // Adjust climbing animation speed based on movement
         if (Mathf.Abs(verticalInput) > 0)
         {
-            animator.speed = 1; // Play climbing animation at normal speed
+            animator.speed = 1;
         }
         else
         {
-            animator.speed = 0; // Pause climbing animation when stationary
+            animator.speed = 0;
         }
 
-        if(isGrounded && horizontalInput != 0)
+        if (isGrounded && horizontalInput != 0)
         {
             ExitLadder();
         }
@@ -128,14 +129,13 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
-    public void StartClimbing(Transform ladder)
+    public void StartClimbing(Ladder ladder, Vector3 snapPosition)
     {
         isClimbing = true;
-        ladderTransform = ladder;
+        currentLadder = ladder;
 
-        // Snap player to ladder position
-        transform.position = new Vector3(ladder.position.x, transform.position.y, transform.position.z);
+        // Snap to the ladder, keeping Y from snapPosition (dynamically follows player Y)
+        transform.position = new Vector3(snapPosition.x, snapPosition.y, snapPosition.z);
 
         // Disable gravity & normal movement
         rb.useGravity = false;
@@ -149,17 +149,25 @@ public class PlayerController : MonoBehaviour
     {
         isClimbing = false;
         rb.useGravity = true;
-
-        // Return to normal movement
         animator.SetBool("isClimbing", false);
-        animator.speed = 1; // Ensure normal animations resume
+        animator.speed = 1;
+    }
+
+    public void ExitLadderAtTop(Vector3 topExitPos)
+    {
+        isClimbing = false;
+        rb.useGravity = true;
+        transform.position = topExitPos;
+
+        currentLadder = null;
+        animator.SetBool("isClimbing", false);
     }
 
     void HandleAnimations()
     {
         animator.SetBool("isGrounded", isGrounded);
 
-        if (!isClimbing) // Prevents overriding climbing animation
+        if (!isClimbing)
         {
             if (!isZeroGravity)
             {
@@ -178,7 +186,7 @@ public class PlayerController : MonoBehaviour
 
     void FlipCharacter()
     {
-        if (!isClimbing) // Prevents flipping while climbing
+        if (!isClimbing)
         {
             if (horizontalInput > 0 && !facingRight)
             {

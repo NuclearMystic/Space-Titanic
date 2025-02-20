@@ -24,7 +24,7 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody rb;
     private Animator animator;
-    private float horizontalInput;
+    public float horizontalInput;
     private float verticalInput;
     private bool jumpRequested = false;
     public bool facingRight = true;
@@ -165,6 +165,8 @@ public class PlayerController : MonoBehaviour
 
     void HandleAnimations()
     {
+        if (GetComponent<PlayerAttack>().isAttacking) return; // Let PlayerAttack handle animations
+
         animator.SetBool("isGrounded", isGrounded);
 
         if (!isClimbing)
@@ -183,6 +185,7 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+
 
     void FlipCharacter()
     {

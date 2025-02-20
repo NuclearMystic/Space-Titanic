@@ -1,3 +1,5 @@
+using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,6 +10,10 @@ public class UIController : MonoBehaviour
     [SerializeField] private RectTransform interactionImage; // UI image to show above player
     private Transform target;
     private bool isVisible = false;
+
+    public Slider shipHPSlider;
+    public TMP_Text shipTimerText;
+    public TMP_Text shipTemp;
 
     void Awake()
     {
@@ -49,5 +55,10 @@ public class UIController : MonoBehaviour
 
         Vector3 screenPosition = Camera.main.WorldToScreenPoint(target.position + Vector3.up * 1.5f);
         interactionImage.position = screenPosition;
+    }
+
+    internal void UpdateRepairMeter(float v)
+    {
+        throw new NotImplementedException();
     }
 }

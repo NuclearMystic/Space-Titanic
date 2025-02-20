@@ -24,7 +24,7 @@ public class PlayerAttack : MonoBehaviour
     private bool isRepairing = false;
     private float repairSpeed = 3f;
     private float repairProgress = 0f;
-
+    private GameObject activeZapEffect;
 
     void Start()
     {
@@ -32,10 +32,9 @@ public class PlayerAttack : MonoBehaviour
         playerController = GetComponent<PlayerController>();
     }
 
-    private void Update()
+    void Update()
     {
-        HandleAttackMode();
-        HandleAttack();
+        HandleAttacks();
         HandleAttackAnimations();
 
         if (isRepairing)
@@ -44,11 +43,23 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    void HandleAttackMode()
+    void HandleAttacks()
     {
-        if (Input.GetMouseButtonDown(0) && !isAttacking && !isRepairing)
+        if (isRepairing) return;
+
+        if (Input.GetMouseButtonDown(0))
         {
-            EnterAttackMode();
+            if (!isAttacking)
+            {
+                EnterAttackMode();
+            }
+
+            if (Time.time > lastAttackTime + attackCooldown)
+            {
+                lastAttackTime = Time.time;
+                attackModeStartTime = Time.time;
+                PerformAttack();
+            }
         }
 
         if (isAttacking && Time.time - attackModeStartTime >= attackModeDuration)
@@ -57,21 +68,11 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    void HandleAttack()
-    {
-        if (isAttacking && Input.GetMouseButtonDown(0) && Time.time > lastAttackTime + attackCooldown)
-        {
-            lastAttackTime = Time.time;
-            attackModeStartTime = Time.time;
-            PerformAttack();
-        }
-    }
-
     void HandleAttackAnimations()
     {
         if (!isAttacking) return;
 
-        float movementSpeed = Mathf.Abs(playerController.horizontalInput) *
+        float movementSpeed = Mathf.Abs(Input.GetAxis("Horizontal")) *
             (Input.GetKey(KeyCode.LeftShift) ? playerController.runSpeedMultiplier : 1);
 
         animator.SetFloat("Speed", movementSpeed);
@@ -101,52 +102,37 @@ public class PlayerAttack : MonoBehaviour
 
     void PerformAttack()
     {
-        Vector3 clickPosition = Input.mousePosition; // Get the mouse position on screen
-
-        // Fire raycast from camera to clicked position
-        Ray ray = Camera.main.ScreenPointToRay(clickPosition);
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
         int layerMask = LayerMask.GetMask("Enemy", "BreakableObject");
 
         bool hitSomething = Physics.Raycast(ray, out hit, Mathf.Infinity, layerMask);
-        Vector3 hitPoint = hitSomething ? hit.point : ray.GetPoint(10f); // Default to 10 units away if nothing is hit
+        Vector3 hitPoint = hitSomething ? hit.point : ray.GetPoint(10f);
 
         if (hitSomething)
         {
-            Debug.Log("Raycast hit: " + hit.collider.gameObject.name);
-
-            //  Prioritize hitting a gremlin first
             Gremlin gremlin = hit.collider.GetComponentInParent<Gremlin>();
             if (gremlin != null)
             {
-                Debug.Log("Gremlin hit! Calling GetShocked()");
                 gremlin.GetShocked();
             }
             else if (hit.collider.CompareTag("Broken"))
             {
-                //  If no gremlin was hit, check for a broken object
-                Debug.Log("Hit a Broken object!");
                 BreakableObject brokenObject = hit.collider.GetComponent<BreakableObject>();
-
                 if (brokenObject != null)
                 {
-                    Debug.Log("Found BreakableObject component!");
                     StartRepairing(brokenObject);
-                }
-                else
-                {
-                    Debug.LogError("BreakableObject component NOT found on Broken object!");
                 }
             }
         }
-        else
-        {
-            Debug.Log("Raycast hit nothing. Playing visual zap.");
-        }
 
-        // Play zap animation from wrench to clicked location (even if nothing was hit)
+        PlayZapEffect(hitPoint);
+    }
+
+    void PlayZapEffect(Vector3 target)
+    {
         GameObject zapInstance = Instantiate(lightningZapPrefab);
-        zapInstance.GetComponent<LightningZap>().Initialize(wrenchTip, hitPoint);
+        zapInstance.GetComponent<LightningZap>().Initialize(wrenchTip, target);
 
         if (audioSource != null && zapSound != null)
             audioSource.PlayOneShot(zapSound);
@@ -160,23 +146,23 @@ public class PlayerAttack : MonoBehaviour
         currentRepairTarget = brokenObject;
         repairProgress = 0f;
 
-        playerController.enabled = false;
+        playerController.isRepairing = true; // Prevent input but allow movement
         UIController.Instance.ShowRepairMeter(true);
-        FireRepairZap();
+        MaintainZapEffect();
     }
 
-    private void FireRepairZap()
+    private void MaintainZapEffect()
     {
-        GameObject zapInstance = Instantiate(lightningZapPrefab);
-        zapInstance.GetComponent<LightningZap>().Initialize(wrenchTip, currentRepairTarget.transform.position);
+        if (activeZapEffect == null)
+        {
+            activeZapEffect = Instantiate(lightningZapPrefab);
+        }
+        activeZapEffect.GetComponent<LightningZap>().Initialize(wrenchTip, currentRepairTarget.transform.position);
 
-        if (audioSource != null && zapSound != null)
+        if (audioSource != null && zapSound != null && !audioSource.isPlaying)
         {
             audioSource.loop = true;
-            if (!audioSource.isPlaying)
-            {
-                audioSource.Play();
-            }
+            audioSource.Play();
         }
     }
 
@@ -191,15 +177,10 @@ public class PlayerAttack : MonoBehaviour
             {
                 CompleteRepair();
             }
-            else if (Time.time > lastAttackTime + attackCooldown)
-            {
-                lastAttackTime = Time.time;
-                FireRepairZap();
-            }
         }
         else
         {
-            CancelRepair();
+            Invoke(nameof(CancelRepair), 0.5f); // Grace period before canceling
         }
     }
 
@@ -212,15 +193,17 @@ public class PlayerAttack : MonoBehaviour
         }
 
         UIController.Instance.ShowRepairMeter(false);
-        playerController.enabled = true;
+        playerController.isRepairing = false;
         StopRepairZap();
     }
 
     private void CancelRepair()
     {
+        if (!isRepairing) return; // Prevent duplicate cancels
+
         isRepairing = false;
         UIController.Instance.ShowRepairMeter(false);
-        playerController.enabled = true;
+        playerController.isRepairing = false;
         StopRepairZap();
     }
 
@@ -230,6 +213,12 @@ public class PlayerAttack : MonoBehaviour
         {
             audioSource.loop = false;
             audioSource.Stop();
+        }
+
+        if (activeZapEffect != null)
+        {
+            Destroy(activeZapEffect, 0.5f); // Fade out effect instead of instant stop
+            activeZapEffect = null;
         }
     }
 }

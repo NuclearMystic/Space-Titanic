@@ -4,27 +4,37 @@ using UnityEngine;
 public class BreakableObject : MonoBehaviour
 {
     public enum BreakableType { Furnace, Boiler, Gravity }
-    public BreakableType objectType;
+    public enum ObjectState { Normal, Broken, Repairing }
 
-    public int health = 10;
+    public BreakableType objectType;
+    public ObjectState state = ObjectState.Normal;
+
+    public int maxHealth = 10;
+    private int health;
     public GameObject normalPrefab;
     public GameObject brokenPrefab;
-    public bool isBroken = false;
+
     private bool isBeingRepaired = false;
-
-
+    private bool isUnderAttack = false; // New: Tracks if a gremlin is actively attacking
 
     private void Start()
     {
-        // Ensure the object starts in its normal state
+        health = maxHealth;
         SetBrokenState(false);
     }
 
     public void AddDamage(int amount)
     {
-        if (isBroken) return;
+        if (state == ObjectState.Broken && health <= 0) return; // Prevent damage below 0
 
         health -= amount;
+        isUnderAttack = true; // Flag this object as under attack
+
+        if (isBeingRepaired) // Stop repair if attacked
+        {
+            StopRepair();
+        }
+
         if (health <= 0)
         {
             Break();
@@ -33,14 +43,17 @@ public class BreakableObject : MonoBehaviour
 
     private void Break()
     {
-        isBroken = true;
-        gameObject.tag = "Broken";
+        if (state == ObjectState.Broken) return; // Prevent redundant calls
+
+        state = ObjectState.Broken;
         SetBrokenState(true);
     }
 
     private void SetBrokenState(bool broken)
     {
+        state = broken ? ObjectState.Broken : ObjectState.Normal;
         gameObject.tag = broken ? "Broken" : "BreakableObject";
+
         if (normalPrefab != null && brokenPrefab != null)
         {
             normalPrefab.SetActive(!broken);
@@ -50,50 +63,67 @@ public class BreakableObject : MonoBehaviour
 
     public void StartRepair()
     {
-        if (!isBroken || isBeingRepaired) return;
+        if (state != ObjectState.Broken || isBeingRepaired || isUnderAttack) return; // Don't allow repairs during attack
 
         isBeingRepaired = true;
+        state = ObjectState.Repairing;
+        isUnderAttack = false; // Reset attack state when repairing starts
         UIController.Instance.ShowRepairMeter(true);
-        StartCoroutine(RepairCoroutine());
+
+        StartCoroutine(HealOverTime(maxHealth - health, 5f));
     }
 
-    private IEnumerator RepairCoroutine()
+    private IEnumerator HealOverTime(int repairAmount, float duration)
     {
-        int repairAmount = 10; // Amount required to fully repair
-        float repairSpeed = 5f; // Adjust speed if needed
-        int currentProgress = 0;
+        float repairSpeed = duration / repairAmount;
+        int repaired = 0;
 
-        while (currentProgress < repairAmount && isBeingRepaired)
+        while (repaired < repairAmount && isBeingRepaired)
         {
             yield return new WaitForSeconds(repairSpeed);
 
-            currentProgress++;
+            health++;
+            repaired++;
             UIController.Instance.UpdateRepairMeter(health);
 
-            if (currentProgress >= repairAmount)
+            if (health >= maxHealth)
             {
-                health = 10;
-                isBroken = false;
-                SetBrokenState(false);
-                UIController.Instance.ShowRepairMeter(false);
-                isBeingRepaired = false;
+                CompleteRepair();
+                yield break;
             }
         }
+    }
+
+    private void CompleteRepair()
+    {
+        if (health < maxHealth) return; // Ensure repair doesn't complete in one frame
+
+        health = maxHealth;
+        isBeingRepaired = false;
+        state = ObjectState.Normal;
+        isUnderAttack = false;
+        SetBrokenState(false);
+        UIController.Instance.ShowRepairMeter(false);
     }
 
     public void StopRepair()
     {
         isBeingRepaired = false;
+        state = ObjectState.Broken;
         UIController.Instance.ShowRepairMeter(false);
     }
 
     public void Restore()
     {
-        if (!isBroken) return;
+        if (state != ObjectState.Broken) return;
 
-        health = 10;
-        isBroken = false;
-        gameObject.tag = "BreakableObject";
+        health = maxHealth;
+        isUnderAttack = false;
         SetBrokenState(false);
+    }
+
+    public void NotifyGremlinLeft()
+    {
+        isUnderAttack = false; // Reset when gremlins leave
     }
 }

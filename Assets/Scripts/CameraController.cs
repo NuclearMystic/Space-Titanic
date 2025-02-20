@@ -19,7 +19,6 @@ public class CameraController : MonoBehaviour
     public float zoomSpeed = 2f;
     public float zoomSmoothness = 5f;
 
-    private PlayerController playerController;
     private Rigidbody playerRigidbody;
     private float targetScreenX;
     private float targetZoom;
@@ -31,13 +30,20 @@ public class CameraController : MonoBehaviour
         if (virtualCamera.Follow != null)
         {
             playerTransform = virtualCamera.Follow;
-            playerController = playerTransform.GetComponent<PlayerController>();
             playerRigidbody = playerTransform.GetComponent<Rigidbody>();
         }
 
         transposer = virtualCamera.GetCinemachineComponent<CinemachineFramingTransposer>();
-        targetScreenX = screenXRight; // Default to facing right
-        targetZoom = virtualCamera.m_Lens.OrthographicSize; // Start at current zoom level
+
+        if (playerTransform != null)
+        {
+            targetScreenX = (playerTransform.localScale.z > 0) ? screenXRight : screenXLeft;
+        }
+
+        if (virtualCamera != null)
+        {
+            targetZoom = virtualCamera.m_Lens.OrthographicSize;
+        }
     }
 
     void Update()
@@ -48,21 +54,22 @@ public class CameraController : MonoBehaviour
 
     void HandleScreenXShift()
     {
-        if (playerController != null && playerRigidbody != null)
+        if (playerTransform == null || playerRigidbody == null || transposer == null) return;
+
+        float playerVelocityX = playerRigidbody.velocity.x;
+
+        if (Mathf.Abs(playerVelocityX) > minVelocityForScreenAdjust)
         {
-            float playerVelocityX = playerRigidbody.velocity.x;
-
-            if (Mathf.Abs(playerVelocityX) > minVelocityForScreenAdjust)
-            {
-                targetScreenX = playerController.facingRight ? screenXRight : screenXLeft;
-            }
-
-            transposer.m_ScreenX = Mathf.Lerp(transposer.m_ScreenX, targetScreenX, transitionSpeed * Time.deltaTime);
+            targetScreenX = (playerTransform.localScale.z > 0) ? screenXRight : screenXLeft;
         }
+
+        transposer.m_ScreenX = Mathf.Lerp(transposer.m_ScreenX, targetScreenX, transitionSpeed * Time.deltaTime);
     }
 
     void HandleZoom()
     {
+        if (Time.timeScale == 0 || virtualCamera == null) return; // Prevent zooming while paused
+
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
         if (scrollInput != 0)
         {

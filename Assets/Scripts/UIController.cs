@@ -7,7 +7,7 @@ public class UIController : MonoBehaviour
 {
     public static UIController Instance { get; private set; }
 
-    [SerializeField] private RectTransform interactionImage; // UI image to show above player
+    [SerializeField] private RectTransform interactionImage;
     private Transform target;
     private bool isVisible = false;
 
@@ -16,16 +16,24 @@ public class UIController : MonoBehaviour
     public TMP_Text shipTemp;
 
     public GameObject repairMeter;
+    private Slider repairSlider; // Cache for better performance
 
     void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
+            DontDestroyOnLoad(gameObject); // Ensure UI persists across scenes
         }
         else
         {
             Destroy(gameObject);
+        }
+
+        // Cache slider reference to avoid repeated calls
+        if (repairMeter != null)
+        {
+            repairSlider = repairMeter.GetComponentInChildren<Slider>();
         }
     }
 
@@ -39,6 +47,8 @@ public class UIController : MonoBehaviour
 
     public void ShowInteractionPrompt(Transform playerTransform)
     {
+        if (interactionImage == null) return;
+
         target = playerTransform;
         interactionImage.gameObject.SetActive(true);
         isVisible = true;
@@ -46,6 +56,8 @@ public class UIController : MonoBehaviour
 
     public void HideInteractionPrompt()
     {
+        if (interactionImage == null) return;
+
         interactionImage.gameObject.SetActive(false);
         isVisible = false;
         target = null;
@@ -53,24 +65,33 @@ public class UIController : MonoBehaviour
 
     private void UpdatePromptPosition()
     {
-        if (target == null) return;
+        if (target == null || interactionImage == null) return;
 
         Vector3 screenPosition = Camera.main.WorldToScreenPoint(target.position + Vector3.up * 1.5f);
         interactionImage.position = screenPosition;
     }
 
-    internal void UpdateRepairMeter(float v)
+    public void UpdateRepairMeter(float value)
     {
-        repairMeter.GetComponentInChildren<Slider>().value = v;
+        if (repairSlider != null)
+        {
+            repairSlider.value = value;
+        }
     }
 
-    internal void ShowRepairMeter(bool v)
+    public void ShowRepairMeter(bool visible)
     {
-        repairMeter.SetActive(v);
+        if (repairMeter != null)
+        {
+            repairMeter.SetActive(visible);
+        }
     }
 
-    internal void UpdateTimer(string timer)
+    public void UpdateTimer(string timer)
     {
-        shipTimerText.text = timer;
+        if (shipTimerText != null)
+        {
+            shipTimerText.text = timer;
+        }
     }
 }

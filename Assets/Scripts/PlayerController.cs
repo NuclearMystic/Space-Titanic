@@ -24,10 +24,10 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody rb;
     private Animator animator;
-    public float horizontalInput;
-    private float verticalInput;
-    private bool jumpRequested = false;
-    public bool facingRight = true;
+    private bool facingRight = true;
+
+    public bool isRepairing { get; set; } = false; // Track repair status
+    private bool jumpRequested = false; // Track jump request from input
 
     void Start()
     {
@@ -40,30 +40,32 @@ public class PlayerController : MonoBehaviour
     {
         if (isClimbing)
         {
-            HandleLadderMovement();
+            if (!isRepairing) HandleLadderMovement();
+            return; // Stop further updates while climbing
         }
-        else
+
+        if (!isRepairing)
         {
             HandleInput();
             HandleAnimations();
             FlipCharacter();
         }
-
-        CheckGrounded();
     }
 
     void FixedUpdate()
     {
+        CheckGrounded();
+
         if (isClimbing)
         {
-            rb.velocity = new Vector3(0, verticalInput * climbSpeed, 0);
+            rb.velocity = new Vector3(0, Input.GetAxis("Vertical") * climbSpeed, 0);
 
             if (currentLadder != null)
             {
                 currentLadder.CheckIfAtTop(this);
             }
         }
-        else
+        else if (!isRepairing) // Prevent movement while repairing
         {
             HandleMovement();
             ApplyGroundingForce();
@@ -72,53 +74,38 @@ public class PlayerController : MonoBehaviour
 
     void HandleInput()
     {
-        horizontalInput = Input.GetAxis("Horizontal");
+        if (isRepairing) return; // Block input while repairing
 
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && !isZeroGravity)
-        {
-            TriggerJumpAnimation();
-        }
+        float horizontalInput = Input.GetAxis("Horizontal");
 
         if (isZeroGravity)
         {
-            verticalInput = 0;
-            if (Input.GetKey(KeyCode.Space)) verticalInput = 1;
-            if (Input.GetKey(KeyCode.LeftControl)) verticalInput = -1;
+            float verticalInput = (Input.GetKey(KeyCode.Space) ? 1 : 0) - (Input.GetKey(KeyCode.LeftControl) ? 1 : 0);
+            rb.velocity = new Vector3(horizontalInput * zeroGSpeed, verticalInput * zeroGSpeed, 0);
+        }
+        else if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        {
+            TriggerJumpAnimation();
         }
     }
 
     void HandleMovement()
     {
-        float speed = walkSpeed;
-        if (Input.GetKey(KeyCode.LeftShift)) speed *= runSpeedMultiplier;
-
-        Vector3 moveDirection = new Vector3(horizontalInput * speed, 0, 0);
-
-        if (!isZeroGravity)
-        {
-            rb.velocity = new Vector3(moveDirection.x, rb.velocity.y, 0);
-        }
-        else
-        {
-            rb.velocity = new Vector3(moveDirection.x, verticalInput * zeroGSpeed, 0);
-        }
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float speed = walkSpeed * (Input.GetKey(KeyCode.LeftShift) ? runSpeedMultiplier : 1);
+        rb.velocity = new Vector3(horizontalInput * speed, rb.velocity.y, 0);
     }
 
     void HandleLadderMovement()
     {
-        verticalInput = Input.GetAxis("Vertical");
-        horizontalInput = Input.GetAxis("Horizontal");
+        if (isRepairing) return; // Block ladder movement while repairing
 
-        if (Mathf.Abs(verticalInput) > 0)
-        {
-            animator.speed = 1;
-        }
-        else
-        {
-            animator.speed = 0;
-        }
+        float verticalInput = Input.GetAxis("Vertical");
+        float horizontalInput = Input.GetAxis("Horizontal");
 
-        if (isGrounded && horizontalInput != 0)
+        animator.speed = (Mathf.Abs(verticalInput) > 0) ? 1 : 0;
+
+        if (isGrounded && Mathf.Abs(horizontalInput) > 0.3f)
         {
             ExitLadder();
         }
@@ -131,17 +118,16 @@ public class PlayerController : MonoBehaviour
 
     public void StartClimbing(Ladder ladder, Vector3 snapPosition)
     {
+        if (isRepairing) return; // Prevent climbing while repairing
+
         isClimbing = true;
         currentLadder = ladder;
 
-        // Snap to the ladder, keeping Y from snapPosition (dynamically follows player Y)
         transform.position = new Vector3(snapPosition.x, snapPosition.y, snapPosition.z);
 
-        // Disable gravity & normal movement
         rb.useGravity = false;
         rb.velocity = Vector3.zero;
 
-        // Play climbing animation
         animator.SetBool("isClimbing", true);
     }
 
@@ -165,42 +151,33 @@ public class PlayerController : MonoBehaviour
 
     void HandleAnimations()
     {
-        if (GetComponent<PlayerAttack>().isAttacking) return; // Let PlayerAttack handle animations
+        if (GetComponent<PlayerAttack>().isAttacking || isRepairing) return;
 
         animator.SetBool("isGrounded", isGrounded);
 
         if (!isClimbing)
         {
-            if (!isZeroGravity)
-            {
-                float movementSpeed = Mathf.Abs(horizontalInput) * (Input.GetKey(KeyCode.LeftShift) ? runSpeedMultiplier : 1);
-                animator.SetFloat("Speed", movementSpeed);
-                animator.SetBool("isZeroGravity", false);
-            }
-            else
-            {
-                float floatingSpeed = Mathf.Abs(horizontalInput) + Mathf.Abs(verticalInput);
-                animator.SetFloat("FloatSpeed", floatingSpeed);
-                animator.SetBool("isZeroGravity", true);
-            }
+            float movementSpeed = Mathf.Abs(Input.GetAxis("Horizontal")) * (Input.GetKey(KeyCode.LeftShift) ? runSpeedMultiplier : 1);
+            animator.SetFloat("Speed", movementSpeed);
+            animator.SetBool("isZeroGravity", isZeroGravity);
         }
     }
 
-
     void FlipCharacter()
     {
-        if (!isClimbing)
+        if (isRepairing) return; // Prevent flipping while repairing
+
+        float horizontalInput = Input.GetAxis("Horizontal");
+
+        if (horizontalInput > 0 && !facingRight)
         {
-            if (horizontalInput > 0 && !facingRight)
-            {
-                facingRight = true;
-                transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y, 1);
-            }
-            else if (horizontalInput < 0 && facingRight)
-            {
-                facingRight = false;
-                transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y, -1);
-            }
+            facingRight = true;
+            transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y, -transform.localScale.z);
+        }
+        else if (horizontalInput < 0 && facingRight)
+        {
+            facingRight = false;
+            transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y, -transform.localScale.z);
         }
     }
 
@@ -211,22 +188,23 @@ public class PlayerController : MonoBehaviour
 
     void TriggerJumpAnimation()
     {
-        jumpRequested = true;
+        if (!isGrounded) return; // Prevent double jumping
+
+        jumpRequested = true; // Set flag for JumpLaunch()
         animator.SetTrigger("Jump");
     }
 
     public void JumpLaunch()
     {
-        if (jumpRequested)
-        {
-            rb.velocity = new Vector3(rb.velocity.x, jumpForce, rb.velocity.z);
-            jumpRequested = false;
-        }
+        if (!jumpRequested) return; // Ensure jump was requested before launching
+
+        rb.velocity = new Vector3(rb.velocity.x, jumpForce, rb.velocity.z);
+        jumpRequested = false; // Reset after jumping
     }
 
     void ApplyGroundingForce()
     {
-        if (isGrounded && !isZeroGravity && rb.velocity.y <= 0)
+        if (isGrounded && !isZeroGravity && rb.velocity.y < -0.1f)
         {
             rb.AddForce(Vector3.down * groundingForce, ForceMode.Acceleration);
         }

@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using static BreakableObject;
 
 public class Gremlin : MonoBehaviour
 {
@@ -9,7 +10,8 @@ public class Gremlin : MonoBehaviour
     public float fleeSpeed = 6f;
     public float detectionRadius = 5f;
     public float idleTime = 1f;
-    public float fleeDuration = 2f;
+    public float baseFleeDuration = 2f; // Base flee time
+    private float fleeTimeMultiplier = 1f; // 1x for normal flee, 2x for zap flee
 
     public Light zapLight;
     public AudioSource zapSound;
@@ -43,58 +45,55 @@ public class Gremlin : MonoBehaviour
             zapLight.enabled = false;
     }
 
-    void Update()
+    private void Update()
     {
         if (isIdle) return;
 
         if (isFleeing)
         {
             FleeFromPlayer();
+            return; // Stop further logic while fleeing
+        }
+
+        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+        if (distanceToPlayer <= detectionRadius)
+        {
+            fleeTimeMultiplier = 1f;
+            StartCoroutine(Flee());
         }
         else
         {
-            float distanceToPlayer = Vector3.Distance(transform.position, player.position);
-            if (distanceToPlayer <= detectionRadius)
-            {
-                StartCoroutine(Flee());
-            }
-            else
-            {
-                MoveToTarget();
-            }
+            MoveToTarget();
         }
 
-        if (isAttacking && currentTarget != null && !currentTarget.isBroken)
+        if (isAttacking && currentTarget != null)
         {
-            if (Time.time >= nextAttackTime)
+            if (currentTarget.state != ObjectState.Broken && Time.time >= nextAttackTime)
             {
                 Attack();
             }
-        }
-        else if (currentTarget != null && currentTarget.isBroken)
-        {
-            isAttacking = false;
-            currentTarget = null;
         }
     }
 
     private void Attack()
     {
-        if (currentTarget == null || currentTarget.isBroken) return;
+        if (isFleeing || currentTarget == null) return; // Stop attacks while fleeing
 
-        // Trigger Claw animation
+        if (currentTarget.state == ObjectState.Broken)
+        {
+            isAttacking = false;
+            currentTarget = null;
+            return;
+        }
+
         animator.SetTrigger("Claw");
-
-        // Schedule damage to apply when animation plays
-        Invoke(nameof(ApplyDamage), 0.3f); // Adjust timing based on animation
-
-        // Set next attack time for cooldown
+        Invoke(nameof(ApplyDamage), 0.3f);
         nextAttackTime = Time.time + attackCooldown;
     }
 
     private void ApplyDamage()
     {
-        if (currentTarget != null && !currentTarget.isBroken)
+        if (currentTarget != null && currentTarget.state != ObjectState.Broken)
         {
             currentTarget.AddDamage(1);
         }
@@ -145,13 +144,18 @@ public class Gremlin : MonoBehaviour
     private IEnumerator Flee()
     {
         isFleeing = true;
+        isAttacking = false; // Stop attacking when fleeing
+        currentTarget = null;
+
         rb.velocity = Vector3.zero;
         animator.SetTrigger("Shock");
 
         yield return new WaitForSeconds(0.5f);
 
+        float totalFleeTime = baseFleeDuration * fleeTimeMultiplier;
         float fleeTime = 0f;
-        while (fleeTime < fleeDuration)
+
+        while (fleeTime < totalFleeTime)
         {
             FleeFromPlayer();
             fleeTime += Time.deltaTime;
@@ -159,11 +163,14 @@ public class Gremlin : MonoBehaviour
         }
 
         isFleeing = false;
+        fleeTimeMultiplier = 1f;
     }
 
     public void GetShocked()
     {
         if (isFleeing) return;
+
+        fleeTimeMultiplier = 2f; // Double flee time when zapped
 
         if (zapLight)
             StartCoroutine(FlashLight());
@@ -202,7 +209,7 @@ public class Gremlin : MonoBehaviour
         else if (!isFleeing && other.CompareTag("BreakableObject")) // Ignore if fleeing
         {
             BreakableObject breakable = other.GetComponent<BreakableObject>();
-            if (breakable != null && !breakable.isBroken)
+            if (breakable != null && breakable.state != ObjectState.Broken) // Check state properly
             {
                 currentTarget = breakable;
                 isAttacking = true;
@@ -213,12 +220,10 @@ public class Gremlin : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // If the gremlin collides with another gremlin, check for panic chain reaction
         Gremlin otherGremlin = collision.collider.GetComponent<Gremlin>();
         if (otherGremlin != null && isFleeing && !otherGremlin.isFleeing)
         {
-            otherGremlin.GetShocked(); // Make the other gremlin flee too
+            otherGremlin.GetShocked();
         }
     }
-
 }

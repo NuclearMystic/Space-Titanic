@@ -11,6 +11,7 @@ public class GremlinSpawnPoint : MonoBehaviour
     private GameObject activeGremlin; // Track the current gremlin
     private Transform player;
     private Camera mainCamera;
+    private float playerCheckDistanceSqr; // Optimized squared distance check
 
     void Start()
     {
@@ -19,6 +20,8 @@ public class GremlinSpawnPoint : MonoBehaviour
 
         if (!player)
             Debug.LogError("Player not found! Make sure the player has the 'Player' tag.");
+
+        playerCheckDistanceSqr = playerCheckDistance * playerCheckDistance; // Precompute squared distance
 
         StartCoroutine(SpawnCheckRoutine());
     }
@@ -29,7 +32,7 @@ public class GremlinSpawnPoint : MonoBehaviour
         {
             yield return new WaitForSeconds(checkInterval);
 
-            if (!activeGremlin && IsPlayerFarEnough() && IsOffScreen())
+            if (activeGremlin == null && IsPlayerFarEnough() && IsOffScreen())
             {
                 TrySpawnGremlin();
             }
@@ -38,17 +41,25 @@ public class GremlinSpawnPoint : MonoBehaviour
 
     private bool IsPlayerFarEnough()
     {
-        return Vector3.Distance(transform.position, player.position) > playerCheckDistance;
+        return (transform.position - player.position).sqrMagnitude > playerCheckDistanceSqr;
     }
 
     private bool IsOffScreen()
     {
+        if (mainCamera == null) return false; // Prevent errors if camera is missing
+
         Vector3 screenPoint = mainCamera.WorldToViewportPoint(transform.position);
         return screenPoint.x < 0 || screenPoint.x > 1 || screenPoint.y < 0 || screenPoint.y > 1;
     }
 
     private void TrySpawnGremlin()
     {
+        if (gremlinPrefab == null)
+        {
+            Debug.LogWarning("Gremlin prefab is not assigned in GremlinSpawnPoint!");
+            return;
+        }
+
         if (Random.value <= spawnChance) // Random chance to spawn
         {
             activeGremlin = Instantiate(gremlinPrefab, transform.position, Quaternion.identity);

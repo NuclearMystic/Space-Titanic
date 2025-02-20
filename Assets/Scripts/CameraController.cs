@@ -37,7 +37,7 @@ public class CameraController : MonoBehaviour
 
         transposer = virtualCamera.GetCinemachineComponent<CinemachineFramingTransposer>();
         targetScreenX = screenXRight; // Default to facing right
-        targetZoom = transposer.m_CameraDistance; // Start at current zoom level
+        targetZoom = virtualCamera.m_Lens.OrthographicSize; // Start at current zoom level
     }
 
     void Update()
@@ -70,6 +70,6 @@ public class CameraController : MonoBehaviour
             targetZoom = Mathf.Clamp(targetZoom, minZoom, maxZoom);
         }
 
-        transposer.m_CameraDistance = Mathf.Lerp(transposer.m_CameraDistance, targetZoom, zoomSmoothness * Time.deltaTime);
+        virtualCamera.m_Lens.OrthographicSize = Mathf.Lerp(virtualCamera.m_Lens.OrthographicSize, targetZoom, zoomSmoothness * Time.deltaTime);
     }
 }

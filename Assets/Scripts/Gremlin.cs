@@ -199,7 +199,7 @@ public class Gremlin : MonoBehaviour
 
             Destroy(transform.parent ? transform.parent.gameObject : gameObject);
         }
-        else if (other.CompareTag("BreakableObject"))
+        else if (!isFleeing && other.CompareTag("BreakableObject")) // Ignore if fleeing
         {
             BreakableObject breakable = other.GetComponent<BreakableObject>();
             if (breakable != null && !breakable.isBroken)

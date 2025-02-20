@@ -8,30 +8,10 @@ public class LightningZap : MonoBehaviour
     public float zapDuration = 0.2f;
     public int segments = 10;
     public float jaggedness = 0.5f;
-    public float zapRadius = 0.5f; // New: Increases zap hitbox size
 
-    public void Initialize(Vector3 start, Vector3 end)
+    public void Initialize(Transform wrenchTip, Vector3 targetPosition)
     {
-        RaycastHit hit;
-        Vector3 direction = (end - start).normalized;
-        float distance = Vector3.Distance(start, end);
-
-        // Exclude the Ignore Raycast layer from the mask
-        int layerMask = LayerMask.GetMask("Enemy") & ~LayerMask.GetMask("Ignore Raycast");
-
-        // Using SphereCast for better hit detection
-        if (Physics.SphereCast(start, zapRadius, direction, out hit, distance, layerMask))
-        {
-            Gremlin gremlin = hit.collider.GetComponentInParent<Gremlin>(); // Ensure we get the right script
-            if (gremlin != null)
-            {
-                gremlin.GetShocked();
-            }
-
-            end = hit.point; // Adjust the zap effect to stop at the hit point
-        }
-
-        StartCoroutine(AnimateZap(start, end));
+        StartCoroutine(AnimateZap(wrenchTip.position, targetPosition));
     }
 
     IEnumerator AnimateZap(Vector3 start, Vector3 end)
@@ -49,11 +29,9 @@ public class LightningZap : MonoBehaviour
             lineRenderer.SetPosition(i, start + direction * i + offset);
         }
 
-        // Play impact effect
         impactEffect.transform.position = end;
         impactEffect.Play();
 
-        // Destroy after duration
         yield return new WaitForSeconds(zapDuration);
         Destroy(gameObject);
     }

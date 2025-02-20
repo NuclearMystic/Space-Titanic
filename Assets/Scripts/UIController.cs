@@ -15,6 +15,8 @@ public class UIController : MonoBehaviour
     public TMP_Text shipTimerText;
     public TMP_Text shipTemp;
 
+    public GameObject repairMeter;
+
     void Awake()
     {
         if (Instance == null)
@@ -59,6 +61,11 @@ public class UIController : MonoBehaviour
 
     internal void UpdateRepairMeter(float v)
     {
-        throw new NotImplementedException();
+        repairMeter.GetComponentInChildren<Slider>().value = v;
+    }
+
+    internal void ShowRepairMeter(bool v)
+    {
+        repairMeter.SetActive(v);
     }
 }

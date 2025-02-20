@@ -4959,7 +4959,7 @@ AudioSource:
     type: 2}
   m_audioClip: {fileID: 8300000, guid: 7fe7fd382dc14fc498d1efcb55335af6, type: 3}
   m_PlayOnAwake: 0
-  m_Volume: 1
+  m_Volume: 0.8
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -5060,4 +5060,5 @@ MonoBehaviour:
   zapDuration: 0.2
   segments: 10
   jaggedness: 0.5
-  zapRadius: 1
+  zapRange: 10
+  sphereRadius: 10

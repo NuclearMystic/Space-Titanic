@@ -68,4 +68,9 @@ public class UIController : MonoBehaviour
     {
         repairMeter.SetActive(v);
     }
+
+    internal void UpdateTimer(string timer)
+    {
+        shipTimerText.text = timer;
+    }
 }

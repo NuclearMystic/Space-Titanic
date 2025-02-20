@@ -15,7 +15,7 @@ public class BreakableObject : MonoBehaviour
     public GameObject brokenPrefab;
 
     private bool isBeingRepaired = false;
-    private bool isUnderAttack = false; // New: Tracks if a gremlin is actively attacking
+    private bool isUnderAttack = false; // Tracks if a gremlin is actively attacking
 
     private void Start()
     {
@@ -47,6 +47,12 @@ public class BreakableObject : MonoBehaviour
 
         state = ObjectState.Broken;
         SetBrokenState(true);
+
+        //  Activate Zero-G if this is the Gravity Generator
+        if (objectType == BreakableType.Gravity)
+        {
+            ZeroGManager.Instance.ActivateZeroG();
+        }
     }
 
     private void SetBrokenState(bool broken)
@@ -104,6 +110,12 @@ public class BreakableObject : MonoBehaviour
         isUnderAttack = false;
         SetBrokenState(false);
         UIController.Instance.ShowRepairMeter(false);
+
+        // Deactivate Zero-G when Gravity Generator is fixed
+        if (objectType == BreakableType.Gravity)
+        {
+            ZeroGManager.Instance.DeactivateZeroG();
+        }
     }
 
     public void StopRepair()

@@ -8,6 +8,7 @@ TagManager:
   - GremlinHole
   - BreakableObject
   - Broken
+  - JumpableFloor
   layers:
   - Default
   - TransparentFX

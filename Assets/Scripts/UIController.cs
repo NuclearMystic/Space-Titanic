@@ -18,6 +18,15 @@ public class UIController : MonoBehaviour
     public GameObject repairMeter;
     private Slider repairSlider; // Cache for better performance
 
+    public GameObject gameOverScreen; // Game Over UI Object
+    public TMP_Text gameOverText; // Text for Win/Lose Message
+
+    public GameObject healthUpArrow;  // Green Up Arrow
+    public GameObject healthDownArrow; // Red Down Arrow
+
+    private float lastHealth = 200f; // Store the last health value (initialize as needed)
+
+
     void Awake()
     {
         if (Instance == null)
@@ -92,6 +101,41 @@ public class UIController : MonoBehaviour
         if (shipTimerText != null)
         {
             shipTimerText.text = timer;
+        }
+    }
+
+    public void UpdateHealth(float shipHealth)
+    {
+        if (shipHPSlider != null)
+        {
+            shipHPSlider.value = shipHealth;
+        }
+
+        // Check if health went up or down
+        if (shipHealth > lastHealth)
+        {
+            healthUpArrow.SetActive(true);
+            healthDownArrow.SetActive(false);
+        }
+        else if (shipHealth < lastHealth)
+        {
+            healthUpArrow.SetActive(false);
+            healthDownArrow.SetActive(true);
+        }
+
+        lastHealth = shipHealth; // Store the new value for next check
+    }
+
+    public void ShowGameOverScreen(bool playerWon)
+    {
+        if (gameOverScreen != null)
+        {
+            gameOverScreen.SetActive(true);
+
+            if (gameOverText != null)
+            {
+                gameOverText.text = playerWon ? "Mission Success! The ship survived!" : "Mission Failed! The ship was lost.";
+            }
         }
     }
 }

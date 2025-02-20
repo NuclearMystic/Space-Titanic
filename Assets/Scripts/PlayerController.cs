@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -19,8 +20,10 @@ public class PlayerController : MonoBehaviour
     private Ladder currentLadder;
 
     [Header("Ground Check Settings")]
-    public float groundCheckDistance = 0.2f;
+    public Transform groundCheckPoint; // Assign in Inspector (Empty GameObject)
+    public float groundCheckRadius = 0.3f;
     public LayerMask groundLayer;
+
 
     private Rigidbody rb;
     private Animator animator;
@@ -29,15 +32,23 @@ public class PlayerController : MonoBehaviour
     public bool isRepairing { get; set; } = false; // Track repair status
     private bool jumpRequested = false; // Track jump request from input
 
+    [Header("Jump-Through Floor Settings")]
+    public LayerMask jumpableFloorLayer; // Assign in Inspector
+
+
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         animator = GetComponent<Animator>();
+
     }
 
     void Update()
     {
+        CheckGrounded();
+
+
         if (isClimbing)
         {
             if (!isRepairing) HandleLadderMovement();
@@ -54,7 +65,6 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        CheckGrounded();
 
         if (isClimbing)
         {
@@ -80,19 +90,51 @@ public class PlayerController : MonoBehaviour
 
         if (isZeroGravity)
         {
-            float verticalInput = (Input.GetKey(KeyCode.Space) ? 1 : 0) - (Input.GetKey(KeyCode.LeftControl) ? 1 : 0);
+            float verticalInput = (Input.GetButton("Jump") ? 1 : 0) - (Input.GetKey(KeyCode.LeftControl) ? 1 : 0);
             rb.velocity = new Vector3(horizontalInput * zeroGSpeed, verticalInput * zeroGSpeed, 0);
         }
-        else if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        else
         {
-            TriggerJumpAnimation();
+            if (Input.GetKey(KeyCode.S) && Input.GetButtonDown("Jump")) // Hold "S" + Press "Jump"
+            {
+                TryDropToLowerFloor(); // Teleport to lower floor
+                Debug.Log("Tried to jump down");
+            }
+            else if (Input.GetButtonDown("Jump") && isGrounded)
+            {
+                TriggerJumpAnimation(); // Normal jump
+            }
         }
     }
+
+    private void TryDropToLowerFloor()
+    {
+        Debug.Log(IsStandingOnJumpableFloor());
+        if (IsStandingOnJumpableFloor()) // Check if the player is on a drop-through floor
+        {
+            transform.position += new Vector3(0, 0, -5f); // Instantly move -5 on Z-axis
+        }
+    }
+
+    private bool IsStandingOnJumpableFloor()
+    {
+        RaycastHit hit;
+        float sphereRadius = 0.3f; // Small sphere to check ground
+        float sphereCastDistance = 1f; // Short distance to check just below feet
+
+        if (Physics.SphereCast(transform.position, sphereRadius, Vector3.down, out hit, sphereCastDistance))
+        {
+            return hit.collider.CompareTag("JumpableFloor");
+        }
+
+        return false;
+    }
+
 
     void HandleMovement()
     {
         float horizontalInput = Input.GetAxis("Horizontal");
-        float speed = walkSpeed * (Input.GetKey(KeyCode.LeftShift) ? runSpeedMultiplier : 1);
+        float speed = walkSpeed * (Input.GetButton("Run") ? runSpeedMultiplier : 1);
         rb.velocity = new Vector3(horizontalInput * speed, rb.velocity.y, 0);
     }
 
@@ -183,8 +225,23 @@ public class PlayerController : MonoBehaviour
 
     void CheckGrounded()
     {
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, groundCheckDistance, groundLayer);
+        if (groundCheckPoint == null)
+        {
+            Debug.LogWarning("GroundCheckPoint is not assigned!");
+            return;
+        }
+
+        // Simple sphere check at groundCheckPoint's position
+        isGrounded = Physics.CheckSphere(groundCheckPoint.position, groundCheckRadius, groundLayer);
+
+        // If grounded and falling, ensure the player stays firmly on the ground
+        if (isGrounded && rb.velocity.y < 0f)
+        {
+            rb.velocity = new Vector3(rb.velocity.x, -2f, rb.velocity.z); // Prevents floating issues
+        }
     }
+
+
 
     void TriggerJumpAnimation()
     {
@@ -209,4 +266,16 @@ public class PlayerController : MonoBehaviour
             rb.AddForce(Vector3.down * groundingForce, ForceMode.Acceleration);
         }
     }
+
+    void OnDrawGizmos()
+    {
+        if (groundCheckPoint == null) return;
+
+        Gizmos.color = isGrounded ? Color.green : Color.red; // Green if grounded, red if not
+
+        // Draw a wire sphere where the ground check occurs
+        Gizmos.DrawWireSphere(groundCheckPoint.position, groundCheckRadius);
+    }
 }
+
+

@@ -14,13 +14,13 @@ public class BreakableObject : MonoBehaviour
     public GameObject normalPrefab;
     public GameObject brokenPrefab;
 
-    private bool isBeingRepaired = false;
     private bool isUnderAttack = false; // Tracks if a gremlin is actively attacking
 
     private void Start()
     {
         health = maxHealth;
         SetBrokenState(false);
+        Debug.Log("Breakable object " + gameObject.name + " is Running!");
     }
 
     public void AddDamage(int amount)
@@ -29,11 +29,6 @@ public class BreakableObject : MonoBehaviour
 
         health -= amount;
         isUnderAttack = true; // Flag this object as under attack
-
-        if (isBeingRepaired) // Stop repair if attacked
-        {
-            StopRepair();
-        }
 
         if (health <= 0)
         {
@@ -46,9 +41,10 @@ public class BreakableObject : MonoBehaviour
         if (state == ObjectState.Broken) return; // Prevent redundant calls
 
         state = ObjectState.Broken;
+        isUnderAttack = false;
         SetBrokenState(true);
 
-        //  Activate Zero-G if this is the Gravity Generator
+        // Activate Zero-G if this is the Gravity Generator
         if (objectType == BreakableType.Gravity)
         {
             ZeroGManager.Instance.ActivateZeroG();
@@ -67,71 +63,31 @@ public class BreakableObject : MonoBehaviour
         }
     }
 
-    public void StartRepair()
+    public bool CanBeRepaired()
     {
-        if (state != ObjectState.Broken || isBeingRepaired || isUnderAttack) return; // Don't allow repairs during attack
+        Debug.Log("DEBUG: Checking CanBeRepaired() on " + gameObject.name +
+                  " | State: " + state +
+                  " | isUnderAttack: " + isUnderAttack);
 
-        isBeingRepaired = true;
-        state = ObjectState.Repairing;
-        isUnderAttack = false; // Reset attack state when repairing starts
-        UIController.Instance.ShowRepairMeter(true);
-
-        StartCoroutine(HealOverTime(maxHealth - health, 5f));
+        return state == ObjectState.Broken && !isUnderAttack;
     }
 
-    private IEnumerator HealOverTime(int repairAmount, float duration)
-    {
-        float repairSpeed = duration / repairAmount;
-        int repaired = 0;
-
-        while (repaired < repairAmount && isBeingRepaired)
-        {
-            yield return new WaitForSeconds(repairSpeed);
-
-            health++;
-            repaired++;
-            UIController.Instance.UpdateRepairMeter(health);
-
-            if (health >= maxHealth)
-            {
-                CompleteRepair();
-                yield break;
-            }
-        }
-    }
-
-    private void CompleteRepair()
-    {
-        if (health < maxHealth) return; // Ensure repair doesn't complete in one frame
-
-        health = maxHealth;
-        isBeingRepaired = false;
-        state = ObjectState.Normal;
-        isUnderAttack = false;
-        SetBrokenState(false);
-        UIController.Instance.ShowRepairMeter(false);
-
-        // Deactivate Zero-G when Gravity Generator is fixed
-        if (objectType == BreakableType.Gravity)
-        {
-            ZeroGManager.Instance.DeactivateZeroG();
-        }
-    }
-
-    public void StopRepair()
-    {
-        isBeingRepaired = false;
-        state = ObjectState.Broken;
-        UIController.Instance.ShowRepairMeter(false);
-    }
 
     public void Restore()
     {
         if (state != ObjectState.Broken) return;
 
+        Debug.Log("DEBUG: Restoring " + gameObject.name);
         health = maxHealth;
         isUnderAttack = false;
+        state = ObjectState.Normal;
         SetBrokenState(false);
+
+        // Deactivate Zero-G if this is the Gravity Generator
+        if (objectType == BreakableType.Gravity)
+        {
+            ZeroGManager.Instance.DeactivateZeroG();
+        }
     }
 
     public void NotifyGremlinLeft()

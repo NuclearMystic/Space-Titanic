@@ -14,16 +14,16 @@ public class PlayerAttack : MonoBehaviour
 
     public float attackCooldown = 0.5f;
     public float attackModeDuration = 5f;
+    public float repairSpeed = 3f; // Speed of repair
 
     public bool isAttacking { get; private set; }
+    private bool isRepairing = false;
 
     private float lastAttackTime;
     private float attackModeStartTime;
+    private float repairProgress = 0f;
 
     private BreakableObject currentRepairTarget;
-    private bool isRepairing = false;
-    private float repairSpeed = 3f;
-    private float repairProgress = 0f;
     private GameObject activeZapEffect;
 
     void Start()
@@ -45,7 +45,7 @@ public class PlayerAttack : MonoBehaviour
 
     void HandleAttacks()
     {
-        if (isRepairing) return;
+        if (isRepairing) return; // Prevent attacks while repairing
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -119,7 +119,7 @@ public class PlayerAttack : MonoBehaviour
             else if (hit.collider.CompareTag("Broken"))
             {
                 BreakableObject brokenObject = hit.collider.GetComponent<BreakableObject>();
-                if (brokenObject != null)
+                if (brokenObject != null && brokenObject.CanBeRepaired())
                 {
                     StartRepairing(brokenObject);
                 }
@@ -142,11 +142,13 @@ public class PlayerAttack : MonoBehaviour
     {
         if (isRepairing || brokenObject == null) return;
 
+        Debug.Log("DEBUG: Player started repairing " + brokenObject.gameObject.name);
+
         isRepairing = true;
         currentRepairTarget = brokenObject;
         repairProgress = 0f;
 
-        playerController.isRepairing = true; // Prevent input but allow movement
+        playerController.isRepairing = true;
         UIController.Instance.ShowRepairMeter(true);
         MaintainZapEffect();
     }
@@ -180,17 +182,20 @@ public class PlayerAttack : MonoBehaviour
         }
         else
         {
-            Invoke(nameof(CancelRepair), 0.5f); // Grace period before canceling
+            Invoke(nameof(CancelRepair), 0.5f);
         }
     }
 
     private void CompleteRepair()
     {
+        if (currentRepairTarget == null) return;
+
+        Debug.Log("DEBUG: Repair complete on " + currentRepairTarget.gameObject.name);
+
         isRepairing = false;
-        if (currentRepairTarget != null)
-        {
-            currentRepairTarget.Restore();
-        }
+
+        // Fully restore the object's health and state
+        currentRepairTarget.Restore();
 
         UIController.Instance.ShowRepairMeter(false);
         playerController.isRepairing = false;
@@ -199,8 +204,9 @@ public class PlayerAttack : MonoBehaviour
 
     private void CancelRepair()
     {
-        if (!isRepairing) return; // Prevent duplicate cancels
+        if (!isRepairing) return;
 
+        Debug.Log("DEBUG: Repair canceled.");
         isRepairing = false;
         UIController.Instance.ShowRepairMeter(false);
         playerController.isRepairing = false;
@@ -217,7 +223,7 @@ public class PlayerAttack : MonoBehaviour
 
         if (activeZapEffect != null)
         {
-            Destroy(activeZapEffect, 0.5f); // Fade out effect instead of instant stop
+            Destroy(activeZapEffect, 0.5f);
             activeZapEffect = null;
         }
     }

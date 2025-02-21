@@ -7,8 +7,12 @@ public class PlayerController : MonoBehaviour
     public float walkSpeed = 5f;
     public float runSpeedMultiplier = 1.5f;
     public float jumpForce = 7f;
-    public float zeroGSpeed = 3f;
     public float climbSpeed = 3f;
+
+    [Header("Zero-G Settings")]
+    public float floatForce = 3f;  // How much force is applied in Zero-G
+    public float zeroGDrag = 0.1f; // Air resistance in Zero-G
+    public float slowDownFactor = 0.98f; // How much velocity slows over time
 
     [Header("Gravity Settings")]
     public bool isGrounded;
@@ -36,7 +40,7 @@ public class PlayerController : MonoBehaviour
     public LayerMask jumpableFloorLayer; // Assign in Inspector
 
 
-    void Start()
+    void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
@@ -75,37 +79,86 @@ public class PlayerController : MonoBehaviour
                 currentLadder.CheckIfAtTop(this);
             }
         }
-        else if (!isRepairing) // Prevent movement while repairing
+        else if (!isRepairing)
         {
-            HandleMovement();
-            ApplyGroundingForce();
+            if (isZeroGravity)
+            {
+                ApplyZeroGMovement();
+            }
+            else
+            {
+                HandleMovement();
+                ApplyGroundingForce();
+            }
         }
     }
 
     void HandleInput()
     {
-        if (isRepairing) return; // Block input while repairing
+        if (isRepairing) return;
 
         float horizontalInput = Input.GetAxis("Horizontal");
 
         if (isZeroGravity)
         {
             float verticalInput = (Input.GetButton("Jump") ? 1 : 0) - (Input.GetKey(KeyCode.LeftControl) ? 1 : 0);
-            rb.velocity = new Vector3(horizontalInput * zeroGSpeed, verticalInput * zeroGSpeed, 0);
+
+            float horizontalThrustMultiplier = 20f; // Quadruple X movement (previously 5f)
+            float verticalThrustMultiplier = 0.75f; // Quarter Y movement (previously 3f)
+
+            Vector3 moveDirection = new Vector3(horizontalInput * horizontalThrustMultiplier, verticalInput * verticalThrustMultiplier, 0).normalized;
+
+            rb.AddForce(moveDirection * floatForce, ForceMode.Impulse);
         }
         else
         {
-            if (Input.GetKey(KeyCode.S) && Input.GetButtonDown("Jump")) // Hold "S" + Press "Jump"
+            if (Input.GetKey(KeyCode.S) && Input.GetButtonDown("Jump"))
             {
-                TryDropToLowerFloor(); // Teleport to lower floor
-                Debug.Log("Tried to jump down");
+                TryDropToLowerFloor();
             }
             else if (Input.GetButtonDown("Jump") && isGrounded)
             {
-                TriggerJumpAnimation(); // Normal jump
+                TriggerJumpAnimation();
             }
         }
     }
+
+    void ApplyZeroGMovement()
+    {
+        rb.useGravity = false;
+        rb.drag = zeroGDrag;
+
+        // Slow the player over time to prevent infinite drifting
+        rb.velocity *= slowDownFactor;
+    }
+
+    public void ActivateZeroG()
+    {
+        isZeroGravity = true;
+        rb.useGravity = false;
+        rb.drag = zeroGDrag;
+
+        // Preserve current movement direction and momentum
+        rb.velocity = new Vector3(rb.velocity.x * 1.0f, rb.velocity.y * 1.0f, rb.velocity.z);
+
+        animator.SetBool("isZeroGravity", true);
+    }
+
+
+    public void DeactivateZeroG()
+    {
+        Debug.Log(" Player exiting Zero-G");
+
+        isZeroGravity = false;
+        rb.useGravity = true;
+        rb.drag = 0f;
+        rb.velocity = Vector3.zero;
+        rb.AddForce(Vector3.down * 5f, ForceMode.Impulse); // Pull player down slightly
+
+        animator.SetBool("isZeroGravity", false);
+    }
+
+
 
     private void TryDropToLowerFloor()
     {

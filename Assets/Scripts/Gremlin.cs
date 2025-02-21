@@ -143,9 +143,14 @@ public class Gremlin : MonoBehaviour
 
     private IEnumerator Flee()
     {
+        if (currentTarget != null)
+        {
+            currentTarget.NotifyGremlinLeft(); // Let the object know it's no longer under attack
+            currentTarget = null;
+        }
+
         isFleeing = true;
         isAttacking = false; // Stop attacking when fleeing
-        currentTarget = null;
 
         rb.velocity = Vector3.zero;
         animator.SetTrigger("Shock");
@@ -165,6 +170,7 @@ public class Gremlin : MonoBehaviour
         isFleeing = false;
         fleeTimeMultiplier = 1f;
     }
+
 
     public void GetShocked()
     {
@@ -198,6 +204,11 @@ public class Gremlin : MonoBehaviour
     {
         if (other.CompareTag("GremlinHole"))
         {
+            if (currentTarget != null)
+            {
+                currentTarget.NotifyGremlinLeft(); //  Make sure we stop marking it as attacked
+            }
+
             GremlinSpawnPoint spawnPoint = GetComponentInParent<GremlinSpawnPoint>();
             if (spawnPoint)
             {
@@ -217,6 +228,7 @@ public class Gremlin : MonoBehaviour
             }
         }
     }
+
 
     private void OnCollisionEnter(Collision collision)
     {

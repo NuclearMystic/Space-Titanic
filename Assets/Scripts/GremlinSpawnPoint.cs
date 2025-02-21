@@ -26,6 +26,17 @@ public class GremlinSpawnPoint : MonoBehaviour
         StartCoroutine(SpawnCheckRoutine());
     }
 
+    public void RestartSpawner()
+    {
+        if (gameObject.activeSelf) // Ensure it's active
+        {
+            Debug.Log("Restarting Gremlin Spawner: " + gameObject.name);
+            StopAllCoroutines(); // Stop any old coroutines just in case
+            StartCoroutine(SpawnCheckRoutine()); // Restart the spawn loop
+        }
+    }
+
+
     IEnumerator SpawnCheckRoutine()
     {
         while (true)

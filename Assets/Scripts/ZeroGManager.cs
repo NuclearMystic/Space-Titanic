@@ -22,11 +22,14 @@ public class ZeroGManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-
+        Debug.Log("Zero G manager active");
     }
 
     public void ActivateZeroG()
     {
+        PlayerController player = FindObjectOfType<PlayerController>();
+        if (player != null) player.ActivateZeroG();
+
         // Find all Gremlins and Spawners
         activeGremlins = FindObjectsOfType<Gremlin>(); // Change this to whatever script controls Gremlins
         gremlinSpawners = FindObjectsOfType<GremlinSpawnPoint>(); // Change this to your actual Gremlin spawner script
@@ -53,7 +56,7 @@ public class ZeroGManager : MonoBehaviour
         Animator anim = gremlin.GetComponent<Animator>();
         if (anim)
         {
-            anim.Play("Gremlin_Floating"); // Replace with your actual animation name
+            anim.SetTrigger("Float"); // Replace with your actual animation name
         }
 
         // Play giggling sound effect
@@ -77,10 +80,34 @@ public class ZeroGManager : MonoBehaviour
 
     public void DeactivateZeroG()
     {
-        // Re-enable spawners
-        foreach (var spawner in gremlinSpawners)
+        Debug.Log("ZeroGManager.DeactivateZeroG() CALLED!");
+
+        PlayerController player = FindObjectOfType<PlayerController>();
+        if (player != null)
         {
-            spawner.gameObject.SetActive(true);
+            Debug.Log("Found Player - Restoring Gravity");
+            player.DeactivateZeroG();
+        }
+        else
+        {
+            Debug.LogError("No Player Found! Gravity Restoration Failed");
+        }
+
+        // Re-enable Gremlin spawners and restart their spawn loops
+        if (gremlinSpawners != null)
+        {
+            foreach (var spawner in gremlinSpawners)
+            {
+                spawner.gameObject.SetActive(true);
+                spawner.RestartSpawner(); // Restart the coroutine
+                Debug.Log("Gremlin Spawner Reactivated: " + spawner.gameObject.name);
+            }
+        }
+        else
+        {
+            Debug.LogError("No Gremlin Spawners Found!");
         }
     }
+
+
 }

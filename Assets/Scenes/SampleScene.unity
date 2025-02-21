@@ -1037,6 +1037,7 @@ GameObject:
   m_Component:
   - component: {fileID: 42203404}
   - component: {fileID: 42203405}
+  - component: {fileID: 42203406}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -1091,6 +1092,20 @@ MonoBehaviour:
   furnaceIconBroken: {fileID: 1659869157}
   gravityIconNormal: {fileID: 408554885}
   gravityIconBroken: {fileID: 1971073269}
+--- !u!114 &42203406
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 42203403}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb458a5579d348c40bd205d22463c3d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  floatAwaySpeed: 2
+  despawnTime: 6
 --- !u!1001 &44480380
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23231,7 +23246,7 @@ MonoBehaviour:
     type: 3}
   checkInterval: 5
   playerCheckDistance: 15
-  spawnChance: 0.1
+  spawnChance: 0.2
 --- !u!4 &355294519
 Transform:
   m_ObjectHideFlags: 0
@@ -37571,8 +37586,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 136.7401, y: 0.95422536, z: 11.234752}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 223.10086, y: 0.9542254, z: 24.274199}
+  m_Center: {x: -43.180374, y: 0, z: -6.519698}
 --- !u!23 &802121883
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -61819,7 +61834,7 @@ MonoBehaviour:
     type: 3}
   checkInterval: 5
   playerCheckDistance: 15
-  spawnChance: 0.1
+  spawnChance: 0.2
 --- !u!4 &1409582532
 Transform:
   m_ObjectHideFlags: 0
@@ -62212,7 +62227,7 @@ MonoBehaviour:
     type: 3}
   checkInterval: 5
   playerCheckDistance: 15
-  spawnChance: 0.1
+  spawnChance: 0.2
 --- !u!4 &1435199661
 Transform:
   m_ObjectHideFlags: 0
@@ -63678,7 +63693,7 @@ MonoBehaviour:
     type: 3}
   checkInterval: 5
   playerCheckDistance: 15
-  spawnChance: 0.1
+  spawnChance: 0.2
 --- !u!1001 &1476754832
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -82293,7 +82308,7 @@ MonoBehaviour:
     type: 3}
   checkInterval: 5
   playerCheckDistance: 15
-  spawnChance: 0.1
+  spawnChance: 0.2
 --- !u!4 &1804112744
 Transform:
   m_ObjectHideFlags: 0
@@ -91376,6 +91391,8 @@ MonoBehaviour:
   repairMeter: {fileID: 931875384}
   gameOverScreen: {fileID: 1805202675}
   gameOverText: {fileID: 648595221}
+  healthUpArrow: {fileID: 83429831}
+  healthDownArrow: {fileID: 1506988154}
 --- !u!1 &1946358576
 GameObject:
   m_ObjectHideFlags: 0
@@ -107396,8 +107413,28 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
         type: 3}
+      propertyPath: zeroGDrag
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
+        type: 3}
       propertyPath: climbSpeed
       value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
+        type: 3}
+      propertyPath: floatForce
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
+        type: 3}
+      propertyPath: zeroGSpeed
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
+        type: 3}
+      propertyPath: slowDownFactor
+      value: 0.1
       objectReference: {fileID: 0}
     - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
         type: 3}
@@ -107408,6 +107445,11 @@ PrefabInstance:
         type: 3}
       propertyPath: groundCheckRadius
       value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
+        type: 3}
+      propertyPath: runSpeedMultiplier
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5793500152448646863, guid: b100c4f71a4f1bb4c9e8d6725a968347,
         type: 3}

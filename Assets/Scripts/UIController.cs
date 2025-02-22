@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class UIController : MonoBehaviour
 {
@@ -26,6 +27,10 @@ public class UIController : MonoBehaviour
 
     private float lastHealth = 200f; // Store the last health value (initialize as needed)
 
+    public GameObject goodGameOverScreen; // Assign in Inspector (Win Screen)
+    public GameObject badGameOverScreen;  // Assign in Inspector (Loss Screen)
+
+    public GameObject pauseMenu;
 
     void Awake()
     {
@@ -51,6 +56,11 @@ public class UIController : MonoBehaviour
         if (isVisible && target != null)
         {
             UpdatePromptPosition();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            ShowPauseMenu();
         }
     }
 
@@ -128,14 +138,39 @@ public class UIController : MonoBehaviour
 
     public void ShowGameOverScreen(bool playerWon)
     {
-        if (gameOverScreen != null)
+        if (goodGameOverScreen != null && badGameOverScreen != null)
         {
-            gameOverScreen.SetActive(true);
+            goodGameOverScreen.SetActive(playerWon);
+            badGameOverScreen.SetActive(!playerWon);
 
             if (gameOverText != null)
             {
-                gameOverText.text = playerWon ? "Mission Success! The ship survived!" : "Mission Failed! The ship was lost.";
+                gameOverText.text = playerWon ? "Mission Success! Another easy shift! Huh? The Skipper just mentioned something about a space iceberg. Wonder what thats about..." : "Mission Failed! You're fired from the space Titanic! Better luck next try. ***Hint hint, you can shoot through floors...***.";
             }
         }
+    }
+
+    public void ShowPauseMenu()
+    {
+        if (pauseMenu.activeSelf)
+        {
+            pauseMenu.SetActive(false);
+        }
+        else
+        {
+            pauseMenu.SetActive(true);
+        }
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
+    public void ReturnToMainMenu()
+    {
+        UIController.Instance.gameObject.SetActive(false);
+        GameManager.Instance.gameObject.SetActive(false);
+        SceneManager.LoadScene("MainMenu");
     }
 }

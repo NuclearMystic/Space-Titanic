@@ -238,4 +238,9 @@ public class Gremlin : MonoBehaviour
             otherGremlin.GetShocked();
         }
     }
+
+    public void DespawnGremlin()
+    {
+        Destroy(this.transform.parent.gameObject);
+    }
 }

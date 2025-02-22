@@ -6,8 +6,8 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
 
     private float timer = 600f; // 10 minutes (600 seconds)
-    private int shipHealth = 200; // Starting ship health
-    private int maxShipHealth = 200; // Max health cap
+    private int shipHealth = 300; // Starting ship health
+    private int maxShipHealth = 300; // Max health cap
     private bool gameOver = false;
 
     [Header("Ship Systems")]

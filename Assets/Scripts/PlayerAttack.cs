@@ -103,18 +103,19 @@ public class PlayerAttack : MonoBehaviour
     void PerformAttack()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
+        float sphereRadius = 1f; // Adjust as needed for easier hits
         int layerMask = LayerMask.GetMask("Enemy", "BreakableObject");
 
-        bool hitSomething = Physics.Raycast(ray, out hit, Mathf.Infinity, layerMask);
-        Vector3 hitPoint = hitSomething ? hit.point : ray.GetPoint(10f);
+        RaycastHit[] hits = Physics.SphereCastAll(ray, sphereRadius, Mathf.Infinity, layerMask);
+        Vector3 hitPoint = ray.GetPoint(10f); // Default if nothing is hit
 
-        if (hitSomething)
+        foreach (RaycastHit hit in hits)
         {
             Gremlin gremlin = hit.collider.GetComponentInParent<Gremlin>();
             if (gremlin != null)
             {
                 gremlin.GetShocked();
+                hitPoint = hit.point; // Update hit point to the first valid hit
             }
             else if (hit.collider.CompareTag("Broken"))
             {
@@ -122,12 +123,14 @@ public class PlayerAttack : MonoBehaviour
                 if (brokenObject != null && brokenObject.CanBeRepaired())
                 {
                     StartRepairing(brokenObject);
+                    hitPoint = hit.point;
                 }
             }
         }
 
         PlayZapEffect(hitPoint);
     }
+
 
     void PlayZapEffect(Vector3 target)
     {
@@ -150,16 +153,22 @@ public class PlayerAttack : MonoBehaviour
 
         playerController.isRepairing = true;
         UIController.Instance.ShowRepairMeter(true);
-        MaintainZapEffect();
+
+        // Use repairPoint position if it exists, otherwise fallback to object center
+        Vector3 repairTargetPos = (currentRepairTarget.repairPoint != null) ?
+            currentRepairTarget.repairPoint.position : currentRepairTarget.transform.position;
+
+        MaintainZapEffect(repairTargetPos);
     }
 
-    private void MaintainZapEffect()
+    private void MaintainZapEffect(Vector3 targetPos)
     {
         if (activeZapEffect == null)
         {
             activeZapEffect = Instantiate(lightningZapPrefab);
         }
-        activeZapEffect.GetComponent<LightningZap>().Initialize(wrenchTip, currentRepairTarget.transform.position);
+
+        activeZapEffect.GetComponent<LightningZap>().UpdateZap(wrenchTip.position, targetPos);
 
         if (audioSource != null && zapSound != null && !audioSource.isPlaying)
         {
@@ -175,16 +184,24 @@ public class PlayerAttack : MonoBehaviour
             repairProgress += Time.deltaTime * repairSpeed;
             UIController.Instance.UpdateRepairMeter(repairProgress);
 
+            // Keep zap effect locked onto repair target
+            Vector3 repairTargetPos = (currentRepairTarget.repairPoint != null) ?
+                currentRepairTarget.repairPoint.position : currentRepairTarget.transform.position;
+
+            MaintainZapEffect(repairTargetPos);
+
             if (repairProgress >= 10f)
             {
                 CompleteRepair();
             }
         }
-        else
+        else if (Input.GetMouseButtonUp(0)) // <-- Fix: Stop repairing on release
         {
-            Invoke(nameof(CancelRepair), 0.5f);
+            CancelRepair();
         }
     }
+
+
 
     private void CompleteRepair()
     {
@@ -223,7 +240,7 @@ public class PlayerAttack : MonoBehaviour
 
         if (activeZapEffect != null)
         {
-            Destroy(activeZapEffect, 0.5f);
+            Destroy(activeZapEffect);
             activeZapEffect = null;
         }
     }

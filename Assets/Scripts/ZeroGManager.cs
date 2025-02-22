@@ -43,11 +43,11 @@ public class ZeroGManager : MonoBehaviour
         // Make all Gremlins float away and despawn
         foreach (var gremlin in activeGremlins)
         {
-            StartCoroutine(FloatAndDespawnGremlin(gremlin));
+            FloatAndDespawnGremlin(gremlin);
         }
     }
 
-    private IEnumerator FloatAndDespawnGremlin(Gremlin gremlin)
+    private void FloatAndDespawnGremlin(Gremlin gremlin)
     {
         // Disable the Gremlin's normal AI behavior
         gremlin.enabled = false;
@@ -59,23 +59,6 @@ public class ZeroGManager : MonoBehaviour
             anim.SetTrigger("Float"); // Replace with your actual animation name
         }
 
-        // Play giggling sound effect
-        AudioSource audio = gremlin.GetComponent<AudioSource>();
-        if (audio)
-        {
-            audio.Play(); // Assumes you attached the giggle sound to their AudioSource
-        }
-
-        // Make the Gremlin slowly float up
-        float startTime = Time.time;
-        while (Time.time - startTime < despawnTime)
-        {
-            gremlin.transform.position += Vector3.up * floatAwaySpeed * Time.deltaTime;
-            yield return null;
-        }
-
-        // Destroy the Gremlin after floating away
-        Destroy(gremlin.gameObject);
     }
 
     public void DeactivateZeroG()

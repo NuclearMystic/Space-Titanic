@@ -51,7 +51,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         CheckGrounded();
-
+        animator.SetBool("isGrounded", isGrounded);
 
         if (isClimbing)
         {
@@ -103,12 +103,26 @@ public class PlayerController : MonoBehaviour
         {
             float verticalInput = (Input.GetButton("Jump") ? 1 : 0) - (Input.GetKey(KeyCode.LeftControl) ? 1 : 0);
 
-            float horizontalThrustMultiplier = 20f; // Quadruple X movement (previously 5f)
-            float verticalThrustMultiplier = 0.75f; // Quarter Y movement (previously 3f)
+            float horizontalThrustMultiplier = 20f;  // Quadruple X movement
+            float verticalThrustMultiplier = 1f; // Quarter Y movement
 
-            Vector3 moveDirection = new Vector3(horizontalInput * horizontalThrustMultiplier, verticalInput * verticalThrustMultiplier, 0).normalized;
+            Vector3 moveDirection = new Vector3(
+                horizontalInput * horizontalThrustMultiplier,
+                verticalInput * verticalThrustMultiplier,
+                0
+            );
 
-            rb.AddForce(moveDirection * floatForce, ForceMode.Impulse);
+            float maxSpeed = 75f; // Set max speed limit
+
+            // **Fix: Apply force using Time.fixedDeltaTime**
+            if (rb.velocity.sqrMagnitude < maxSpeed * maxSpeed)
+            {
+                rb.AddForce(moveDirection * floatForce * Time.deltaTime, ForceMode.Acceleration);
+            }
+
+            // **Improved Deceleration: Use Drag Instead of a Manual Counter-Force**
+            float dragAmount = 0.98f; // Adjust for desired slow-down speed
+            rb.velocity *= dragAmount;
         }
         else
         {
@@ -122,6 +136,9 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+
+
+
 
     void ApplyZeroGMovement()
     {
@@ -138,27 +155,53 @@ public class PlayerController : MonoBehaviour
         rb.useGravity = false;
         rb.drag = zeroGDrag;
 
-        // Preserve current movement direction and momentum
-        rb.velocity = new Vector3(rb.velocity.x * 1.0f, rb.velocity.y * 1.0f, rb.velocity.z);
+        // Reset horizontal movement so the player doesn't keep running forward
+        //rb.velocity = new Vector3(0, rb.velocity.y, 0);
+
+        // Apply a small upward push when Zero-G activates to start floating
+        rb.AddForce(Vector3.up * 3f, ForceMode.Force);
+
+
+
+        // Start Lerp Coroutine for Animation Speed
+        StartCoroutine(LerpAnimationSpeedToZero());
+
 
         animator.SetBool("isZeroGravity", true);
     }
 
+    private IEnumerator LerpAnimationSpeedToZero()
+    {
+        float currentSpeed = animator.GetFloat("Speed");
+        float lerpDuration = 1.5f; // Duration in seconds
+        float elapsedTime = 0f;
+
+        while (elapsedTime < lerpDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float newSpeed = Mathf.Lerp(currentSpeed, 0f, elapsedTime / lerpDuration);
+            animator.SetFloat("Speed", newSpeed);
+            yield return null;
+        }
+
+        animator.SetFloat("Speed", 0f); // Ensure it fully reaches zero
+    }
 
     public void DeactivateZeroG()
     {
-        Debug.Log(" Player exiting Zero-G");
+        Debug.Log("Player exiting Zero-G");
 
         isZeroGravity = false;
         rb.useGravity = true;
         rb.drag = 0f;
-        rb.velocity = Vector3.zero;
-        rb.AddForce(Vector3.down * 5f, ForceMode.Impulse); // Pull player down slightly
+
+        // Reset horizontal velocity again when Zero-G ends
+        rb.velocity = new Vector3(0, rb.velocity.y, 0);
+
+
 
         animator.SetBool("isZeroGravity", false);
     }
-
-
 
     private void TryDropToLowerFloor()
     {
@@ -278,19 +321,27 @@ public class PlayerController : MonoBehaviour
 
     void CheckGrounded()
     {
-        if (groundCheckPoint == null)
+        if (!isZeroGravity)
         {
-            Debug.LogWarning("GroundCheckPoint is not assigned!");
-            return;
-        }
 
-        // Simple sphere check at groundCheckPoint's position
-        isGrounded = Physics.CheckSphere(groundCheckPoint.position, groundCheckRadius, groundLayer);
+            if (groundCheckPoint == null)
+            {
+                Debug.LogWarning("GroundCheckPoint is not assigned!");
+                return;
+            }
 
-        // If grounded and falling, ensure the player stays firmly on the ground
-        if (isGrounded && rb.velocity.y < 0f)
+            // Simple sphere check at groundCheckPoint's position
+            isGrounded = Physics.CheckSphere(groundCheckPoint.position, groundCheckRadius, groundLayer);
+
+            // If grounded and falling, ensure the player stays firmly on the ground
+            if (isGrounded && rb.velocity.y < 0f)
+            {
+                rb.velocity = new Vector3(rb.velocity.x, -2f, rb.velocity.z); // Prevents floating issues
+            }
+
+        }else if (isZeroGravity)
         {
-            rb.velocity = new Vector3(rb.velocity.x, -2f, rb.velocity.z); // Prevents floating issues
+            isGrounded = false;
         }
     }
 

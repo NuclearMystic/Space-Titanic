@@ -16,6 +16,8 @@ public class BreakableObject : MonoBehaviour
 
     private bool isUnderAttack = false; // Tracks if a gremlin is actively attacking
 
+    public Transform repairPoint; // Assign this in the Inspector
+
     private void Start()
     {
         health = maxHealth;

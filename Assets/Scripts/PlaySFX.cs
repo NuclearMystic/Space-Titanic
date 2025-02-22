@@ -6,6 +6,7 @@ public class PlaySFX : MonoBehaviour
 {
     public AudioSource clipOneSFX;
     public AudioSource clipTwoSFX;
+    public AudioSource clipThreeSFX;
 
 
     public void PlaySFXOne()
@@ -16,5 +17,10 @@ public class PlaySFX : MonoBehaviour
     public void PlaySFXTwo()
     {
         clipTwoSFX.Play();
+    }
+
+    public void PlaySFXThree()
+    {
+        clipThreeSFX.Play();
     }
 }
